@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Steam 即時在線人數排行</title>
+<style>
+  :root{
+    --bg:#171a21;
+    --panel-a:#1b2838;
+    --panel-b:#16202d;
+    --line:#2a475e;
+    --accent:#66c0f4;
+    --accent2:#a4d007;
+    --text:#c7d5e0;
+    --dim:#8f98a0;
+    --font:"Motiva Sans","Segoe UI",Roboto,Arial,"Microsoft JhengHei","PingFang TC",sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1200px 600px at 15% -10%, rgba(42,71,94,.55), transparent 70%),
+      radial-gradient(900px 500px at 100% 0%, rgba(102,192,244,.10), transparent 65%),
+      #171a21;
+    background-attachment:fixed;
+    color:var(--text);
+    font-family:var(--font);
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ============ Header ============ */
+  header{
+    position:sticky; top:0; z-index:50;
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    padding:12px 24px;
+    background:linear-gradient(90deg,#171a21 0%,#1b2838 45%,#22374d 100%);
+    border-bottom:1px solid var(--line);
+    box-shadow:0 3px 18px rgba(0,0,0,.65);
+    backdrop-filter:blur(6px);
+  }
+  .brand{display:flex; align-items:center; gap:14px; min-width:0;}
+  .logo-mark{
+    width:42px; height:42px; flex:0 0 42px; border-radius:50%;
+    background:radial-gradient(circle at 32% 28%,#8fd6ff,#1a9fff 45%,#0e5f9e 100%);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:22px; color:#0b1724;
+    box-shadow:0 0 0 2px rgba(102,192,244,.35), 0 0 22px rgba(26,159,255,.55);
+    letter-spacing:-1px;
+  }
+  header h1{
+    margin:0; font-size:16px; font-weight:700; letter-spacing:1.6px;
+    text-transform:uppercase; color:#fff; white-space:nowrap;
+  }
+  header .sub{
+    margin:2px 0 0; font-size:11px; color:var(--dim); letter-spacing:.6px;
+  }
+  .head-right{display:flex; align-items:center; gap:16px; flex-wrap:wrap;}
+  #status{font-size:12px; color:var(--dim); letter-spacing:.4px;}
+  #status.error{color:#e86c6c;}
+  #status.ok{color:var(--accent2);}
+
+  .btn{
+    display:inline-flex; align-items:center; gap:8px;
+    background:linear-gradient(to bottom,#a4d007,#5b7d00);
+    color:#0d1218; border:0; border-radius:3px;
+    padding:10px 20px; font-family:var(--font); font-size:13px; font-weight:700;
+    letter-spacing:.8px; cursor:pointer;
+    box-shadow:0 2px 0 rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.25);
+    transition:filter .15s, transform .1s;
+  }
+  .btn:hover{filter:brightness(1.15);}
+  .btn:active{transform:translateY(1px);}
+  .btn:disabled{filter:grayscale(.6) brightness(.8); cursor:not-allowed;}
+  .btn .icon{display:inline-block; font-size:15px; line-height:1;}
+  .btn.loading .icon{animation:spin .9s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* ============ Layout ============ */
+  main{max-width:1560px; margin:0 auto; padding:20px 24px 64px;}
+
+  .stats{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:18px;
+  }
+  .stat-card{
+    position:relative; overflow:hidden;
+    background:linear-gradient(150deg, rgba(42,71,94,.55), rgba(22,32,45,.95));
+    border:1px solid var(--line); border-radius:6px;
+    padding:16px 18px;
+    box-shadow:0 4px 16px rgba(0,0,0,.35);
+  }
+  .stat-card::before{
+    content:""; position:absolute; left:0; top:0; bottom:0; width:3px;
+    background:linear-gradient(to bottom,var(--accent),transparent);
+  }
+  .stat-label{
+    font-size:10.5px; letter-spacing:1.6px; text-transform:uppercase;
+    color:var(--accent); font-weight:700; margin-bottom:8px;
+  }
+  .stat-value{
+    font-size:26px; font-weight:700; color:#fff; line-height:1.1;
+    letter-spacing:.4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .stat-note{
+    margin-top:6px; font-size:11.5px; color:var(--dim);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+
+  .charts{
+    display:grid; grid-template-columns:repeat(2,1fr); gap:16px; margin-bottom:18px;
+  }
+  .panel{
+    background:linear-gradient(160deg, rgba(42,71,94,.30), rgba(22,32,45,.92));
+    border:1px solid var(--line); border-radius:6px;
+    padding:16px 18px 14px;
+    box-shadow:0 4px 20px rgba(0,0,0,.35);
+    min-width:0;
+  }
+  .panel h2{
+    margin:0 0 12px; padding-bottom:9px;
+    font-size:11.5px; font-weight:700; letter-spacing:1.8px; text-transform:uppercase;
+    color:var(--accent); border-bottom:1px solid var(--line);
+    display:flex; justify-content:space-between; align-items:baseline; gap:10px;
+  }
+  .panel h2 .hint{
+    font-size:10px; letter-spacing:.5px; text-transform:none;
+    color:var(--dim); font-weight:400;
+  }
+  .canvas-wrap{position:relative; width:100%; height:320px;}
+  canvas{display:block; width:100%; height:100%;}
+
+  /* ============ Table ============ */
+  .table-panel{padding-bottom:6px;}
+  .table-scroll{max-height:560px; overflow-y:auto; border-radius:4px;}
+  .table-scroll::-webkit-scrollbar{width:10px;}
+  .table-scroll::-webkit-scrollbar-track{background:rgba(0,0,0,.25);}
+  .table-scroll::-webkit-scrollbar-thumb{background:#2a475e; border-radius:5px;}
+  .table-scroll::-webkit-scrollbar-thumb:hover{background:#3d6a8f;}
+
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  thead th{
+    position:sticky; top:0; z-index:2;
+    background:#16202d;
+    text-align:left; padding:10px 12px;
+    font-size:10.5px; letter-spacing:1.3px; text-transform:uppercase;
+    color:var(--accent); font-weight:700;
+    border-bottom:1px solid var(--line);
+  }
+  tbody td{
+    padding:8px 12px; border-bottom:1px solid rgba(42,71,94,.45);
+    color:var(--text); vertical-align:middle;
+  }
+  tbody tr:hover td{background:rgba(102,192,244,.08);}
+  .col-rank{width:56px;}
+  .rank-badge{
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width:26px; height:22px; padding:0 6px; border-radius:3px;
+    font-size:11.5px; font-weight:700; color:#9fb4c4;
+    background:rgba(42,71,94,.55);
+  }
+  .rank-1 .rank-badge{background:linear-gradient(135deg,#f5c542,#b8860b); color:#241a00;}
+  .rank-2 .rank-badge{background:linear-gradient(135deg,#dfe6ec,#8a9aa8); color:#1c2530;}
+  .rank-3 .rank-badge{background:linear-gradient(135deg,#cd7f32,#8a5423); color:#1c1004;}
+  .game-name{display:flex; align-items:center; gap:10px; min-width:0;}
+  .game-name span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .appid{font-size:10.5px; color:#5c7e96; font-family:ui-monospace,Consolas,monospace;}
+  .num{font-variant-numeric:tabular-nums; text-align:right; white-space:nowrap;}
+  .bar-cell{width:170px;}
+  .mini-bar{height:7px; border-radius:4px; background:rgba(255,255,255,.06); overflow:hidden;}
+  .mini-bar i{
+    display:block; height:100%; border-radius:4px;
+    background:linear-gradient(90deg,#2a7fb8,#66c0f4);
+    transition:width .4s ease;
+  }
+  .num-cc{color:#fff; font-weight:700;}
+  .num-peak{color:var(--dim);}
+
+  footer{
+    max-width:1560px; margin:0 auto; padding:0 24px 40px;
+    font-size:11px; color:#5a6b7a; letter-spacing:.4px; line-height:1.8;
+  }
+  footer a{color:var(--accent); text-decoration:none;}
+  footer a:hover{text-decoration:underline;}
+
+  @media (max-width:1080px){
+    .stats{grid-template-columns:repeat(2,1fr);}
+    .charts{grid-template-columns:1fr;}
+    .canvas-wrap{height:300px;}
+  }
+  @media (max-width:620px){
+    header{padding:12px 14px; flex-direction:column; align-items:stretch;}
+    .head-right{justify-content:space-between;}
+    main{padding:14px 12px 48px;}
+    .stats{grid-template-columns:1fr 1fr; gap:10px;}
+    .stat-value{font-size:20px;}
+    .canvas-wrap{height:260px;}
+    .bar-cell, .col-peak{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo-mark">S</div>
+    <div>
+      <h1>Steam 即時在線排行</h1>
+      <p class="sub">Top 100 Games by Concurrent Players</p>
+    </div>
+  </div>
+  <div class="head-right">
+    <div id="status">準備就緒</div>
+    <button id="refreshBtn" class="btn">
+      <span class="icon">↻</span><span>重新整理</span>
+    </button>
+  </div>
+</header>
+
+<main>
+  <!-- 統計卡片 -->
+  <section class="stats">
+    <div class="stat-card">
+      <div class="stat-label">總在線人數</div>
+      <div class="stat-value" id="sTotal">—</div>
+      <div class="stat-note" id="sTotalNote">前 100 款遊戲合計</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">冠軍遊戲</div>
+      <div class="stat-value" id="sTop">—</div>
+      <div class="stat-note" id="sTopNote">載入中…</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">前 10 名佔比</div>
+      <div class="stat-value" id="sShare">—</div>
+      <div class="stat-note">Top 10 人數 / 全部 100 款</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">中位數在線</div>
+      <div class="stat-value" id="sMedian">—</div>
+      <div class="stat-note">第 50 名遊戲的人數</div>
+    </div>
+  </section>
+
+  <!-- 圖表 -->
+  <section class="charts">
+    <div class="panel">
+      <h2>Top 15 在線人數 <span class="hint">單位：人</span></h2>
+      <div class="canvas-wrap"><canvas id="barChart"></canvas></div>
+    </div>
+
+    <div class="panel">
+      <h2>人數分布（排名區間） <span class="hint">佔總在線比例</span></h2>
+      <div class="canvas-wrap"><canvas id="donutChart"></canvas></div>
+    </div>
+
+    <div class="panel">
+      <h2>在線人數區間分布 <span class="hint">各區間遊戲數量</span></h2>
+      <div class="canvas-wrap"><canvas id="histChart"></canvas></div>
+    </div>
+
+    <div class="panel">
+      <h2>歷史總在線趨勢 <span class="hint">每次重新整理記錄一筆</span></h2>
+      <div class="canvas-wrap"><canvas id="lineChart"></canvas></div>
+    </div>
+  </section>
+
+  <!-- 排行榜 -->
+  <section class="panel table-panel">
+    <h2>完整排行 <span class="hint" id="tableHint">100 款遊戲</span></h2>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th class="col-rank">#</th>
+            <th>遊戲</th>
+            <th class="num">目前在線</th>
+            <th class="num col-peak">24 小時峰值</th>
+            <th class="bar-cell">佔比</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <tr><td colspan="5" style="text-align:center;padding:30px;color:#8f98a0;">資料載入中…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<footer>
+  資料來源：<a href="https://api.steampowered.com/ISteamChartsService/GetGamesByConcurrentPlayers/v1/" target="_blank" rel="noopener">Steam ISteamChartsService API</a>
+  ｜遊戲名稱由 Steam Store API 取得｜本頁面僅供參考，與 Valve 無官方關聯。
+</footer>
+
+<script>
+/* =========================================================
+   基本設定
+   ========================================================= */
+const API_URL = 'https://api.steampowered.com/ISteamChartsService/GetGamesByConcurrentPlayers/v1/';
+const FONT = '"Motiva Sans","Segoe UI",Roboto,Arial,"Microsoft JhengHei","PingFang TC",sans-serif';
+
+const nameCache = new Map();
+const state = { games: [], history: [], loading: false };
+
+const el = id => document.getElementById(id);
+const refreshBtn = el('refreshBtn');
+const statusEl   = el('status');
+
+/* =========================================================
+   工具函式
+   ========================================================= */
+const fmt = n => Number(n).toLocaleString('en-US');
+
+function compact(n){
+  n = Number(n) || 0;
+  if (n >= 1e9) return (n/1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return (n/1e6).toFixed(2) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+  return String(n);
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function setStatus(msg, type){
+  statusEl.textContent = msg;
+  statusEl.className = type || '';
+}
+
+/* --------- 帶多重代理備援的 fetch (已優化) --------- */
+const PROXIES = [
+  u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+  u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
+  u => 'https://corsproxy.io/?url=' + encodeURIComponent(u)
+];
+
+async function smartFetch(url, timeout = 25000){ // 增加超時至 25 秒
+  let lastErr = null;
+  for (const make of PROXIES){
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeout);
+    try{
+      const res = await fetch(make(url), { signal: ctrl.signal, cache: 'no-store' });
+      clearTimeout(timer);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const text = await res.text();
+      return JSON.parse(text);
+    }catch(err){
+      clearTimeout(timer);
+      // 攔截 AbortError (超時)，不中斷迴圈，繼續嘗試下一個代理
+      if (err.name === 'AbortError') {
+        console.warn('代理超時:', make(url).substring(0, 40) + '...');
+      } else {
+        console.warn('代理失敗:', make(url).substring(0, 40) + '...', err.message);
+      }
+      lastErr = err;
+    }
+  }
+  throw new Error('無法連線至 Steam API，可能是網路限制或代理暫時失效，請稍後再試。');
+}
+
+/* =========================================================
+   Canvas 繪圖基礎
+   ========================================================= */
+function prep(canvas){
+  const wrap = canvas.parentElement;
+  const rect = wrap.getBoundingClientRect();
+  const w = Math.max(rect.width, 10);
+  const h = Math.max(rect.height, 10);
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width  = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  return { ctx, w, h };
+}
+
+function rr(ctx, x, y, w, h, r){
+  if (w <= 0 || h <= 0) return;
+  r = Math.min(r, h / 2, w / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
+
+function fitText(ctx, text, maxW){
+  text = String(text);
+  if (ctx.measureText(text).width <= maxW) return text;
+  let t = text;
+  while (t.length > 1 && ctx.measureText(t + '…').width > maxW) t = t.slice(0, -1);
+  return t + '…';
+}
+
+function drawEmpty(ctx, w, h, msg){
+  ctx.fillStyle = '#5c7e96';
+  ctx.font = '13px ' + FONT;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(msg || '尚無資料', w / 2, h / 2);
+}
+
+/* =========================================================
+   圖表繪製 (維持不變)
+   ========================================================= */
+function drawHBar(canvas, rows){
+  const { ctx, w, h } = prep(canvas);
+  if (!rows.length){ drawEmpty(ctx, w, h); return; }
+
+  const n = rows.length;
+  const padT = 6, padB = 6;
+  const gap = 10;
+  const valueW = 64;
+  const labelW = Math.min(Math.max(w * 0.30, 88), 190);
+  const barMax = Math.max(w - labelW - valueW - gap * 2, 30);
+
+  const rowH = (h - padT - padB) / n;
+  const barH = Math.min(20, Math.max(6, rowH * 0.62));
+  const maxVal = Math.max(rows[0].value, 1);
+
+  ctx.font = '12px ' + FONT;
+  ctx.textBaseline = 'middle';
+
+  rows.forEach((row, i) => {
+    const cy = padT + i * rowH + rowH / 2;
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#c7d5e0';
+    ctx.fillText(fitText(ctx, row.name, labelW - 10), labelW, cy);
+
+    const x0 = labelW + gap;
+    rr(ctx, x0, cy - barH / 2, barMax, barH, barH / 2);
+    ctx.fillStyle = 'rgba(255,255,255,.05)';
+    ctx.fill();
+
+    const bw = Math.max(3, barMax * (row.value / maxVal));
+    const g = ctx.createLinearGradient(x0, 0, x0 + bw, 0);
+    if (i === 0){
+      g.addColorStop(0, '#7d9f00'); g.addColorStop(1, '#beee11');
+    } else {
+      g.addColorStop(0, '#1f5d8a'); g.addColorStop(1, '#66c0f4');
+    }
+    rr(ctx, x0, cy - barH / 2, bw, barH, barH / 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#8f98a0';
+    ctx.font = '12px ' + FONT;
+    ctx.fillText(compact(row.value), x0 + barMax + gap, cy);
+  });
+}
+
+function drawDonut(canvas, segs){
+  const { ctx, w, h } = prep(canvas);
+  const total = segs.reduce((s, x) => s + x.value, 0);
+  if (!total){ drawEmpty(ctx, w, h); return; }
+
+  const legendW = Math.min(170, w * 0.44);
+  const areaW = w - legendW;
+  const cx = areaW / 2;
+  const cy = h / 2;
+  const R = Math.min(areaW * 0.42, h * 0.44);
+  const r = R * 0.60;
+
+  let angle = -Math.PI / 2;
+  segs.forEach(seg => {
+    const a = (seg.value / total) * Math.PI * 2;
+    if (a <= 0) return;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, angle, angle + a);
+    ctx.arc(cx, cy, r, angle + a, angle, true);
+    ctx.closePath();
+    ctx.fillStyle = seg.color;
+    ctx.fill();
+    angle += a;
+  });
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 20px ' + FONT;
+  ctx.fillText(compact(total), cx, cy - 7);
+  ctx.fillStyle = '#8f98a0';
+  ctx.font = '11px ' + FONT;
+  ctx.fillText('總在線', cx, cy + 14);
+
+  const rowH = 30;
+  let ly = cy - (segs.length * rowH) / 2 + rowH / 2;
+  segs.forEach(seg => {
+    const lx = areaW + 4;
+    rr(ctx, lx, ly - 5, 10, 10, 2);
+    ctx.fillStyle = seg.color;
+    ctx.fill();
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#c7d5e0';
+    ctx.font = '12px ' + FONT;
+    ctx.fillText(seg.label, lx + 17, ly);
+
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#8f98a0';
+    ctx.font = '11.5px ' + FONT;
+    ctx.fillText(((seg.value / total) * 100).toFixed(1) + '%', w - 2, ly);
+    ly += rowH;
+  });
+}
+
+function drawHistogram(canvas, bins){
+  const { ctx, w, h } = prep(canvas);
+  const narrow = w < 460;
+  const padL = 34, padR = 10, padT = 26, padB = narrow ? 58 : 40;
+  const cw = w - padL - padR;
+  const ch = h - padT - padB;
+
+  const maxC = Math.max(...bins.map(b => b.count), 1);
+  const step = cw / bins.length;
+
+  ctx.strokeStyle = 'rgba(102,192,244,.10)';
+  ctx.lineWidth = 1;
+  ctx.font = '10.5px ' + FONT;
+  ctx.fillStyle = '#8f98a0';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  for (let i = 0; i <= 3; i++){
+    const y = padT + ch - (ch * i / 3);
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL + cw, y); ctx.stroke();
+    ctx.fillText(String(Math.round(maxC * i / 3)), padL - 6, y);
+  }
+
+  bins.forEach((bin, i) => {
+    const barW = step * 0.58;
+    const x = padL + i * step + (step - barW) / 2;
+    const bh = bin.count === 0 ? 0 : Math.max(3, ch * (bin.count / maxC));
+    const y = padT + ch - bh;
+
+    if (bh > 0){
+      const g = ctx.createLinearGradient(0, y, 0, padT + ch);
+      g.addColorStop(0, bin.hot ? '#beee11' : '#66c0f4');
+      g.addColorStop(1, bin.hot ? 'rgba(125,159,0,.35)' : 'rgba(31,93,138,.30)');
+      rr(ctx, x, y, barW, bh, 3);
+      ctx.fillStyle = g;
+      ctx.fill();
+    }
+
+    ctx.fillStyle = bin.count ? '#c7d5e0' : '#5c7e96';
+    ctx.font = 'bold 12px ' + FONT;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(bin.count, x + barW / 2, (bh > 0 ? y : padT + ch) - 6);
+
+    ctx.fillStyle = '#8f98a0';
+    ctx.font = '10.5px ' + FONT;
+    ctx.textBaseline = 'top';
+    if (narrow){
+      ctx.save();
+      ctx.translate(x + barW / 2, padT + ch + 10);
+      ctx.rotate(-Math.PI / 4);
+      ctx.textAlign = 'right';
+      ctx.fillText(bin.label, 0, 0);
+      ctx.restore();
+    } else {
+      ctx.textAlign = 'center';
+      ctx.fillText(bin.label, x + barW / 2, padT + ch + 10);
+    }
+  });
+}
+
+function drawLineChart(canvas, pts){
+  const { ctx, w, h } = prep(canvas);
+  const padL = 56, padR = 16, padT = 18, padB = 30;
+  const cw = w - padL - padR;
+  const ch = h - padT - padB;
+
+  if (!pts.length){ drawEmpty(ctx, w, h, '尚無歷史資料，請重新整理'); return; }
+
+  let maxV = Math.max(...pts.map(p => p.v));
+  let minV = Math.min(...pts.map(p => p.v));
+  if (maxV === minV){ maxV += 1; minV -= 1; }
+  const padV = (maxV - minV) * 0.25;
+  const lo = minV - padV;
+  const hi = maxV + padV;
+
+  const X = i => pts.length === 1 ? padL + cw / 2 : padL + cw * i / (pts.length - 1);
+  const Y = v => padT + ch * (1 - (v - lo) / (hi - lo));
+
+  ctx.font = '10.5px ' + FONT;
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  for (let i = 0; i <= 4; i++){
+    const v = lo + (hi - lo) * i / 4;
+    const y = Y(v);
+    ctx.beginPath();
+    ctx.moveTo(padL, y);
+    ctx.lineTo(w - padR, y);
+    ctx.strokeStyle = 'rgba(102,192,244,.12)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = '#8f98a0';
+    ctx.fillText(compact(Math.round(v)), padL - 8, y);
+  }
+
+  const grad = ctx.createLinearGradient(0, padT, 0, padT + ch);
+  grad.addColorStop(0, 'rgba(102,192,244,.45)');
+  grad.addColorStop(1, 'rgba(102,192,244,0)');
+  ctx.beginPath();
+  ctx.moveTo(X(0), Y(pts[0].v));
+  pts.forEach((p, i) => ctx.lineTo(X(i), Y(p.v)));
+  ctx.lineTo(X(pts.length - 1), padT + ch);
+  ctx.lineTo(X(0), padT + ch);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  ctx.beginPath();
+  pts.forEach((p, i) => i ? ctx.lineTo(X(i), Y(p.v)) : ctx.moveTo(X(i), Y(p.v)));
+  ctx.strokeStyle = '#66c0f4';
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  pts.forEach((p, i) => {
+    if (pts.length > 40 && i % 3 !== 0 && i !== pts.length - 1) return;
+    ctx.beginPath();
+    ctx.arc(X(i), Y(p.v), 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#16202d';
+    ctx.fill();
+    ctx.strokeStyle = '#66c0f4';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  });
+
+  ctx.fillStyle = '#8f98a0';
+  ctx.font = '10px ' + FONT;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  const step = Math.max(1, Math.ceil(pts.length / 6));
+  pts.forEach((p, i) => {
+    if (i % step !== 0 && i !== pts.length - 1) return;
+    const d = new Date(p.t);
+    const label = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    ctx.fillText(label, X(i), padT + ch + 9);
+  });
+}
+
+/* =========================================================
+   渲染邏輯
+   ========================================================= */
+function gameName(game){
+  return game.name || nameCache.get(game.appid) || ('App ' + game.appid);
+}
+
+function renderStats(games){
+  const total = games.reduce((s, g) => s + g.cc, 0);
+  const top = games[0];
+  const top10 = games.slice(0, 10).reduce((s, g) => s + g.cc, 0);
+  const median = games[Math.floor(games.length / 2)] ? games[Math.floor(games.length / 2)].cc : 0;
+
+  el('sTotal').textContent = fmt(total);
+  el('sTotalNote').textContent = games.length + ' 款遊戲合計';
+
+  el('sTop').textContent = compact(top.cc);
+  el('sTopNote').textContent = gameName(top);
+
+  el('sShare').textContent = total ? ((top10 / total) * 100).toFixed(1) + '%' : '—';
+  el('sMedian').textContent = fmt(median);
+}
+
+function renderCharts(){
+  const games = state.games;
+  if (!games.length) return;
+
+  drawHBar(el('barChart'), games.slice(0, 15).map(g => ({
+    name: gameName(g),
+    value: g.cc
+  })));
+
+  const tiers = [
+    { label: '第 1–10 名',  from: 0,  to: 10,  color: '#66c0f4' },
+    { label: '第 11–25 名', from: 10, to: 25,  color: '#4c9aca' },
+    { label: '第 26–50 名', from: 25, to: 50,  color: '#a4d007' },
+    { label: '第 51–100 名',from: 50, to: 100, color: '#5c7e10' }
+  ].map(t => ({
+    label: t.label,
+    color: t.color,
+    value: games.slice(t.from, t.to).reduce((s, g) => s + g.cc, 0)
+  }));
+  drawDonut(el('donutChart'), tiers);
+
+  const defs = [
+    { label: '≥1M',      test: v => v >= 1e6,                 hot: true },
+    { label: '500K-1M',  test: v => v >= 5e5 && v < 1e6,      hot: true },
+    { label: '200-500K', test: v => v >= 2e5 && v < 5e5 },
+    { label: '100-200K', test: v => v >= 1e5 && v < 2e5 },
+    { label: '50-100K',  test: v => v >= 5e4 && v < 1e5 },
+    { label: '20-50K',   test: v => v >= 2e4 && v < 5e4 },
+    { label: '<20K',     test: v => v < 2e4 }
+  ];
+  const bins = defs.map(d => ({
+    label: d.label,
+    hot: !!d.hot,
+    count: games.filter(g => d.test(g.cc)).length
+  }));
+  drawHistogram(el('histChart'), bins);
+
+  drawLineChart(el('lineChart'), state.history);
+}
+
+function renderTable(){
+  const games = state.games;
+  const tbody = el('tableBody');
+  if (!games.length){
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:#8f98a0;">尚無資料</td></tr>';
+    return;
+  }
+
+  const total = games.reduce((s, g) => s + g.cc, 0) || 1;
+
+  tbody.innerHTML = games.map(g => {
+    const pct = (g.cc / total) * 100;
+    const rankClass = g.rank <= 3 ? ' rank-' + g.rank : '';
+    return `<tr class="${rankClass}">
+      <td class="col-rank"><span class="rank-badge">${g.rank}</span></td>
+      <td>
+        <div class="game-name">
+          <span title="${escapeHtml(gameName(g))}">${escapeHtml(gameName(g))}</span>
+          <span class="appid">#${g.appid}</span>
+        </div>
+      </td>
+      <td class="num num-cc">${fmt(g.cc)}</td>
+      <td class="num num-peak col-peak">${g.peak ? fmt(g.peak) : '—'}</td>
+      <td class="bar-cell">
+        <div class="mini-bar"><i style="width:${Math.max(pct, 0.6).toFixed(2)}%"></i></div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  el('tableHint').textContent = games.length + ' 款遊戲';
+}
+
+function renderAll(){
+  if (!state.games.length) return;
+  renderStats(state.games);
+  renderCharts();
+  renderTable();
+}
+
+let renderQueued = false;
+function queueRender(){
+  if (renderQueued) return;
+  renderQueued = true;
+  setTimeout(() => { renderQueued = false; renderAll(); }, 250);
+}
+
+/* =========================================================
+   遊戲名稱獲取
+   ========================================================= */
+async function fetchName(appid){
+  if (nameCache.has(appid)) return nameCache.get(appid);
+  const url = `https://store.steampowered.com/api/appdetails?appids=${appid}&filters=basic&l=tchinese`;
+
+  try{
+    const res = await fetch(url, { cache: 'no-store' });
+    if (res.ok){
+      const json = await res.json();
+      const d = json[appid];
+      if (d && d.success && d.data && d.data.name) return d.data.name;
+    }
+  }catch(e){ /* 忽略 */ }
+
+  try{
+    const json = await smartFetch(url, 12000);
+    const d = json[appid];
+    if (d && d.success && d.data && d.data.name) return d.data.name;
+  }catch(e){ /* 忽略 */ }
+  return 'App ' + appid;
+}
+
+async function loadNames(appids){
+  const missing = appids.filter(id => !nameCache.has(id));
+  if (!missing.length) return;
+
+  let idx = 0;
+  let done = 0;
+  const CONCURRENCY = 6;
+
+  const worker = async () => {
+    while (idx < missing.length){
+      const id = missing[idx++];
+      try{
+        const nm = await fetchName(id);
+        nameCache.set(id, nm);
+      }catch(e){
+        nameCache.set(id, 'App ' + id);
+      }
+      done++;
+      if (done % 6 === 0 || done === missing.length) queueRender();
+    }
+  };
+
+  await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+  queueRender();
+}
+
+/* =========================================================
+   主流程
+   ========================================================= */
+async function refresh(){
+  if (state.loading) return;
+  state.loading = true;
+
+  refreshBtn.disabled = true;
+  refreshBtn.classList.add('loading');
+  setStatus('正在連線 Steam…');
+
+  try{
+    const data = await smartFetch(API_URL);
+    const resp = data.response || {};
+    const list = resp.ranks || resp.rank || [];
+
+    if (!Array.isArray(list) || list.length === 0){
+      throw new Error('API 回傳格式異常');
+    }
+
+    const games = list
+      .map(r => ({
+        appid: r.appid,
+        cc: Number(r.concurrent_in_game) || 0,
+        peak: Number(r.peak_in_game) || 0
+      }))
+      .sort((a, b) => b.cc - a.cc)
+      .map((g, i) => ({ ...g, rank: i + 1, name: nameCache.get(g.appid) || null }));
+
+    state.games = games;
+
+    state.history.push({
+      t: Date.now(),
+      v: games.reduce((s, g) => s + g.cc, 0)
+    });
+    if (state.history.length > 80) state.history.shift();
+
+    renderAll();
+    setStatus('更新於 ' + new Date().toLocaleTimeString('zh-Hant'), 'ok');
+
+    loadNames(games.map(g => g.appid));
+
+  }catch(err){
+    console.error(err);
+    setStatus(err.message, 'error');
+  }finally{
+    state.loading = false;
+    refreshBtn.disabled = false;
+    refreshBtn.classList.remove('loading');
+  }
+}
+
+refreshBtn.addEventListener('click', refresh);
+
+let resizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (state.games.length) renderCharts();
+  }, 180);
+});
+
+window.addEventListener('DOMContentLoaded', refresh);
+</script>
+</body>
+</html>
